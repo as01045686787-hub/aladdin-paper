@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>모의매매</title>
+<!-- 파일: index.html (모의매매앱_v1-1_26-11-13-00시35분_일목균형표방) / 방: 일목균형표방
+     같은 폴더의 앱자료.json(노드 컴퓨터 v6 모의매매가 매일 밤 만듦)을 읽어서 보여 줌 -->
+<style>
+:root{color-scheme:light}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#fff;color:#000}
+body{font-family:-apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;max-width:480px;margin:0 auto;padding:12px 14px 28px;overflow-x:hidden}
+h1{font-size:26px;font-weight:800;text-align:center;padding:6px 0 4px}
+.pick{display:flex;justify-content:center;padding:4px 0 6px}
+select{font-size:19px;font-weight:700;padding:6px 10px;border:2px solid #000;border-radius:8px;background:#fff;color:#000;max-width:100%}
+.sub{font-size:17px;text-align:center;padding-bottom:10px;border-bottom:3px solid #000}
+.card{border-bottom:2px solid #000;padding:14px 0}
+.ttl{font-size:21px;font-weight:800}
+.big{font-size:30px;font-weight:800;text-align:center;padding:8px 0 4px}
+.line{font-size:18px;text-align:center;line-height:1.5}
+details{margin-top:10px}
+summary{list-style:none;display:flex;justify-content:center;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+.btn{display:inline-block;background:#FFD400;font-size:18px;font-weight:700;padding:6px 14px;border:1px solid #000;border-radius:8px}
+details[open]>summary .btn::after{content:" 닫기"}
+details:not([open])>summary .btn::after{content:" 보기"}
+.in{margin-top:10px;border-top:1px solid #000}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:19px;padding:10px 2px;border-bottom:1px solid #999}
+.row b{font-size:20px}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:17px;padding:5px 2px}
+.stock{border-bottom:1px solid #999;margin:0}
+.stock>summary{display:block}
+.stock .row{border-bottom:none}
+.box{padding:4px 4px 10px;border-top:1px dashed #999}
+.note{font-size:15px;text-align:center;padding-top:6px}
+.foot{font-size:14px;text-align:center;padding-top:16px}
+</style></head><body>
+<h1>모의매매</h1>
+<div class="pick"><select id="rule" aria-label="규칙 고르기"></select></div>
+<div class="sub" id="sub">자료 읽는 중</div>
+<div id="main"></div>
+<div class="foot">v1.1 · 26-11-13-00시35분 · 일목균형표방<br><span id="made"></span></div>
+<script>
+const NAMES={R0:"R0 기준",R1:"R1 흔들림20%빼기",R2:"R2 흔들림+신고가",R3:"R3 R2+30%빼기",R4:"R4 40일 보유",R5:"R5 장세 무시",R6:"R6 빼기+장세 무시",R7:"R7 +30%·60일",R8:"R8 +25%·40일",R9:"R9 +40%·60일 (주력)"};
+const won=v=>v==null?"-":Math.round(v).toLocaleString("ko-KR")+"원";
+const pct=(v,d=1)=>v==null?"-":(v>0?"+":"")+Number(v).toFixed(d)+"%";
+const md=s=>s?`${+s.slice(5,7)}월 ${+s.slice(8,10)}일`:"-";
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const kv=(k,v)=>`<div class="kv"><span>${k}</span><span>${v}</span></div>`;
+let J=null;
+function render(rid){
+  const g=J.규칙[rid]; if(!g) return;
+  try{localStorage.setItem("rule",rid)}catch(e){}
+  const 장=J.장세, 쉼=!장.사는날 && !g.장세무시;
+  const 일등=장.무리[장.일등]||{};
+  let h="";
+  h+=`<div class="card"><div class="ttl">① 오늘 장세</div><div class="big">${장.사는날?"사는 날":"쉬는 날"}</div>
+   <div class="line">1등 무리 ${esc(장.일등)} · 120일선보다 ${pct(일등.선120)}</div>
+   <details><summary><span class="btn">세 무리</span></summary><div class="in">
+   ${["대형","중형","소형"].map(c=>kv(`${c} 90일 / 120일선`,`${pct(장.무리[c].일90)} / ${pct(장.무리[c].선120)}`)).join("")}
+   <div class="note">1등 무리가 120일선 위로 올라오면 삽니다</div></div></details></div>`;
+  const nb=g.내일매수||[];
+  h+=`<div class="card"><div class="ttl">② 내일 매수</div><div class="big">${nb.length?nb.length+"종목":"매수 없음"}</div>
+   <div class="line">${nb.length?nb.map(x=>esc(x.종목명)).join(", "):(쉼?"쉬는 날이라 사지 않습니다":"살 자리가 없습니다")}</div>
+   <details><summary><span class="btn">후보 ${(g.후보||[]).length}개</span></summary><div class="in">
+   ${(g.후보||[]).map(c=>`<div class="row"><b>${esc(c.종목명)}</b><span>신고가 ${c.신고가}%</span></div>`).join("")}
+   <div class="note">신고가 = 52주 최고가의 몇 %인지<br>A·B 계좌 후보를 합쳐 보여 줍니다</div></div></details></div>`;
+  const H=g.보유||[], 평균=H.length?H.reduce((a,x)=>a+x.수익률,0)/H.length:0;
+  h+=`<div class="card"><div class="ttl">③ 보유 종목</div><div class="big">${H.length?H.length+"종목 · "+pct(평균):"보유 없음"}</div>`;
+  if(H.length){
+    h+=`<details><summary><span class="btn">종목</span></summary><div class="in">`+H.map(x=>`
+     <details class="stock"><summary><div class="row"><b>${esc(x.종목명)} <span style="font-weight:400">${x.계좌}</span></b><b>${pct(x.수익률)}</b></div></summary><div class="box">
+      ${kv("매수일",md(x.매수일))}${kv("매수가",won(x.매수가))}${kv("현재가",won(x.현재가))}
+      ${x.익절가!=null?kv("익절가",won(x.익절가)):""}${x.손절가!=null?kv("손절가 (최고가 기준)",won(x.손절가)):""}
+      ${kv("보유일",`${x.보유일}일 / ${x.보유한도}일`)}${x.내일==="시가 매도"?kv("내일","시가 매도"):""}
+      ${kv("매수일 장세",`${esc(x.장세_1등||"-")} 1등 · ${x.장세_사는날?"사는 날":"쉬는 날"}`)}
+      ${kv("매수일 신고가",x.신고가!=null?x.신고가+"%":"-")}${kv("매수일 흔들림",x.흔들림!=null?x.흔들림+"%":"-")}
+     </div></details>`).join("")+`<div class="note">종목 이름을 누르면 자세히 나옵니다<br>이름 옆 A·B는 계좌입니다</div></div></details>`;
+  }
+  const S=g.오늘매도||[];
+  if(S.length) h+=`<details><summary><span class="btn">오늘 매도 ${S.length}건</span></summary><div class="in">${S.map(x=>`<div class="row"><b>${esc(x.종목명)}</b><span>${pct(x.수익률)} · ${esc(x.사유)}</span></div>`).join("")}</div></details>`;
+  h+=`</div>`;
+  const rs=Object.keys(J.규칙).sort((a,b)=>(b==="R9")-(a==="R9")||a.localeCompare(b));
+  h+=`<div class="card"><div class="ttl">④ 성적</div><div class="big">${g.평가금액!=null?Math.round(g.평가금액/10000).toLocaleString("ko-KR")+"만 원":"-"}</div>
+   <div class="line">11월 2일 시작 · ${pct(g.수익률,2)} · 거래 ${g.거래수??0}건</div>
+   <details><summary><span class="btn">10가지 규칙</span></summary><div class="in">
+   ${rs.map(r=>`<div class="row"><b>${esc(NAMES[r]||r)}</b><span>${pct(J.규칙[r].수익률,2)}</span></div>`).join("")}
+   <div class="note">과거로 해 봤다면 (2019년 11월부터)<br>${esc(NAMES[rid]||rid)}: 연 ${pct(g.미리보기_연수익)} · 최대낙폭 ${pct(g.미리보기_최대낙폭)}</div></div></details></div>`;
+  document.getElementById("main").innerHTML=h;
+}
+fetch("앱자료.json?t="+Date.now()).then(r=>r.json()).then(j=>{
+  J=j; const sel=document.getElementById("rule");
+  const rs=Object.keys(j.규칙).sort((a,b)=>(b==="R9")-(a==="R9")||a.localeCompare(b));
+  sel.innerHTML=rs.map(r=>`<option value="${r}">${esc(NAMES[r]||r)}</option>`).join("");
+  let s="R9"; try{const v=localStorage.getItem("rule"); if(v&&j.규칙[v]) s=v}catch(e){}
+  sel.value=s; sel.onchange=()=>render(sel.value);
+  document.getElementById("sub").textContent=`${md(j.기준일)} 장 마감 기준`;
+  document.getElementById("made").textContent=`자료 만든 시각 ${j.만든시각}`;
+  render(s);
+}).catch(e=>{document.getElementById("sub").textContent="자료를 읽지 못했습니다"});
+</script>
+<!-- 방: 일목균형표방 -->
+</body></html>
