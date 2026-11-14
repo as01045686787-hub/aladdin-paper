@@ -2,7 +2,7 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light">
 <title>모의매매</title>
-<!-- 파일: index.html (모의매매앱_v1-1_26-11-13-00시35분_일목균형표방) / 방: 일목균형표방
+<!-- 파일: index.html (모의매매앱_v1-2_26-11-14-21시00분_일목균형표방) / 방: 일목균형표방
      같은 폴더의 앱자료.json(노드 컴퓨터 v6 모의매매가 매일 밤 만듦)을 읽어서 보여 줌 -->
 <style>
 :root{color-scheme:light}
@@ -32,13 +32,14 @@ details:not([open])>summary .btn::after{content:" 보기"}
 .stock .row{border-bottom:none}
 .box{padding:4px 4px 10px;border-top:1px dashed #999}
 .note{font-size:15px;text-align:center;padding-top:6px}
+.stale{border:3px solid #000;font-size:20px;font-weight:800;text-align:center;padding:10px;margin:10px 0 0;line-height:1.5}
 .foot{font-size:14px;text-align:center;padding-top:16px}
 </style></head><body>
 <h1>모의매매</h1>
 <div class="pick"><select id="rule" aria-label="규칙 고르기"></select></div>
 <div class="sub" id="sub">자료 읽는 중</div>
 <div id="main"></div>
-<div class="foot">v1.1 · 26-11-13-00시35분 · 일목균형표방<br><span id="made"></span></div>
+<div class="foot">v1.2 · 26-11-14-21시00분 · 일목균형표방<br><span id="made"></span></div>
 <script>
 const NAMES={R0:"R0 기준",R1:"R1 흔들림20%빼기",R2:"R2 흔들림+신고가",R3:"R3 R2+30%빼기",R4:"R4 40일 보유",R5:"R5 장세 무시",R6:"R6 빼기+장세 무시",R7:"R7 +30%·60일",R8:"R8 +25%·40일",R9:"R9 +40%·60일 (주력)"};
 const won=v=>v==null?"-":Math.round(v).toLocaleString("ko-KR")+"원";
@@ -64,10 +65,21 @@ function render(rid){
    <details><summary><span class="btn">후보 ${(g.후보||[]).length}개</span></summary><div class="in">
    ${(g.후보||[]).map(c=>`<div class="row"><b>${esc(c.종목명)}</b><span>신고가 ${c.신고가}%</span></div>`).join("")}
    <div class="note">신고가 = 52주 최고가의 몇 %인지<br>A·B 계좌 후보를 합쳐 보여 줍니다</div></div></details></div>`;
+  {
+    const H0=g.보유||[], S0=g.오늘매도||[], T0=H0.filter(x=>x.내일==="시가 매도");
+    const near=H0.map(x=>{const up=x.익절가!=null?(x.익절가/x.현재가-1)*100:null, dn=x.손절가!=null?(x.손절가/x.현재가-1)*100:null; return {...x,up,dn}});
+    const n=S0.length+T0.length;
+    h+=`<div class="card"><div class="ttl">③ 매도</div><div class="big">${n?n+"건":"매도 없음"}</div>
+     <div class="line">${S0.length?"매도완료 "+S0.length+"건":""}${S0.length&&T0.length?" · ":""}${T0.length?"내일 매도 예정 "+T0.length+"건":""}${n?"":"오늘 판 종목도, 내일 팔 종목도 없습니다"}</div>`;
+    if(S0.length) h+=`<details><summary><span class="btn">매도완료 ${S0.length}건</span></summary><div class="in">${S0.map(x=>`<div class="row"><b>${esc(x.종목명)} <span style="font-weight:400">매도완료</span></b><b>${pct(x.수익률)}</b></div>${kv("매도일",md(x.매도일))}${kv("매도 이유",esc(x.사유))}${kv("매수가 → 매도가",won(x.매수가)+" → "+won(x.매도가))}`).join("")}</div></details>`;
+    if(T0.length) h+=`<details><summary><span class="btn">내일 매도 예정 ${T0.length}건</span></summary><div class="in">${T0.map(x=>`<div class="row"><b>${esc(x.종목명)} <span style="font-weight:400">${x.계좌}</span></b><b>${pct(x.수익률)}</b></div>${kv("이유",x.보유한도+"일 채움")}`).join("")}</div></details>`;
+    if(near.length) h+=`<details><summary><span class="btn">보유중 ${near.length}종목</span></summary><div class="in">${near.map(x=>`<div class="row"><b>${esc(x.종목명)} <span style="font-weight:400">보유중 ${x.계좌}</span></b><span>${pct(x.수익률)}</span></div>${x.up!=null?kv("익절까지",pct(x.up)):""}${x.dn!=null?kv("손절까지",pct(x.dn)):""}${kv("기간 매도까지",(x.보유한도-x.보유일)+"일")}`).join("")}<div class="note">아직 팔지 않은 종목입니다<br>몇 % 더 오르거나 내리면 파는지 보여 줍니다</div></div></details>`;
+    h+=`</div>`;
+  }
   const H=g.보유||[], 평균=H.length?H.reduce((a,x)=>a+x.수익률,0)/H.length:0;
-  h+=`<div class="card"><div class="ttl">③ 보유 종목</div><div class="big">${H.length?H.length+"종목 · "+pct(평균):"보유 없음"}</div>`;
+  h+=`<div class="card"><div class="ttl">④ 보유 종목</div><div class="big">${H.length?H.length+"종목 · "+pct(평균):"보유 없음"}</div>`;
   if(H.length){
-    h+=`<details><summary><span class="btn">종목</span></summary><div class="in">`+H.map(x=>`
+    h+=`<details><summary><span class="btn">보유중 종목</span></summary><div class="in">`+H.map(x=>`
      <details class="stock"><summary><div class="row"><b>${esc(x.종목명)} <span style="font-weight:400">${x.계좌}</span></b><b>${pct(x.수익률)}</b></div></summary><div class="box">
       ${kv("매수일",md(x.매수일))}${kv("매수가",won(x.매수가))}${kv("현재가",won(x.현재가))}
       ${x.익절가!=null?kv("익절가",won(x.익절가)):""}${x.손절가!=null?kv("손절가 (최고가 기준)",won(x.손절가)):""}
@@ -76,11 +88,9 @@ function render(rid){
       ${kv("매수일 신고가",x.신고가!=null?x.신고가+"%":"-")}${kv("매수일 흔들림",x.흔들림!=null?x.흔들림+"%":"-")}
      </div></details>`).join("")+`<div class="note">종목 이름을 누르면 자세히 나옵니다<br>이름 옆 A·B는 계좌입니다</div></div></details>`;
   }
-  const S=g.오늘매도||[];
-  if(S.length) h+=`<details><summary><span class="btn">오늘 매도 ${S.length}건</span></summary><div class="in">${S.map(x=>`<div class="row"><b>${esc(x.종목명)}</b><span>${pct(x.수익률)} · ${esc(x.사유)}</span></div>`).join("")}</div></details>`;
   h+=`</div>`;
   const rs=Object.keys(J.규칙).sort((a,b)=>(b==="R9")-(a==="R9")||a.localeCompare(b));
-  h+=`<div class="card"><div class="ttl">④ 성적</div><div class="big">${g.평가금액!=null?Math.round(g.평가금액/10000).toLocaleString("ko-KR")+"만 원":"-"}</div>
+  h+=`<div class="card"><div class="ttl">⑤ 성적</div><div class="big">${g.평가금액!=null?Math.round(g.평가금액/10000).toLocaleString("ko-KR")+"만 원":"-"}</div>
    <div class="line">11월 2일 시작 · ${pct(g.수익률,2)} · 거래 ${g.거래수??0}건</div>
    <details><summary><span class="btn">10가지 규칙</span></summary><div class="in">
    ${rs.map(r=>`<div class="row"><b>${esc(NAMES[r]||r)}</b><span>${pct(J.규칙[r].수익률,2)}</span></div>`).join("")}
@@ -94,6 +104,9 @@ fetch("앱자료.json?t="+Date.now()).then(r=>r.json()).then(j=>{
   let s="R9"; try{const v=localStorage.getItem("rule"); if(v&&j.규칙[v]) s=v}catch(e){}
   sel.value=s; sel.onchange=()=>render(sel.value);
   document.getElementById("sub").textContent=`${md(j.기준일)} 장 마감 기준`;
+  {const kd=new Date(Date.now()+9*3600e3).toISOString().slice(0,10), bd=new Date(j.기준일+"T00:00:00Z"), td=new Date(kd+"T00:00:00Z");
+   let n=0; for(let d=new Date(bd); d<td; d.setUTCDate(d.getUTCDate()+1)){const w=new Date(d.getTime()+864e5).getUTCDay(); if(w>0&&w<6) n++}
+   if(n>=2){const s=document.createElement("div"); s.className="stale"; s.innerHTML=`자료가 오래됐습니다<br>${md(j.기준일)} 이후 ${n}거래일 갱신 안 됨<br>노드 컴퓨터를 확인하세요`; document.getElementById("sub").after(s)}}
   document.getElementById("made").textContent=`자료 만든 시각 ${j.만든시각}`;
   render(s);
 }).catch(e=>{document.getElementById("sub").textContent="자료를 읽지 못했습니다"});
